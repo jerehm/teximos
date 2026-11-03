@@ -20,3 +20,15 @@ Consult these guides before working on related tasks:
 - [Adding or managing content](https://docs.astro.build/en/guides/content-collections/)
 - [Adding styles or using Tailwind](https://docs.astro.build/en/guides/styling/)
 - [Supporting multiple languages](https://docs.astro.build/en/guides/internationalization/)
+
+## Project rules
+
+Teximos is a publication / blog (an Astro site).
+
+## Copy
+- No em dashes, no en dashes, no Oxford comma, no emoji in any published text.
+- This is enforced by a guard: run `node scripts/check-copy.mjs` before committing
+  copy. It must pass.
+
+## Content
+- Use real images only. No AI-obvious or placeholder art in published pieces.
