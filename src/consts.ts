@@ -21,7 +21,7 @@ export const AUTHOR = {
   // Used for the Person schema on /about. Empty entries are dropped.
   // Deliberately no product links here. This is not a funnel.
   links: [
-    { label: "GitHub", href: "https://github.com/jeremiahdiana/teximos" },
+    { label: "GitHub", href: "https://github.com/jerehm/teximos" },
     { label: "LinkedIn", href: "https://www.linkedin.com/in/jerehm/" },
     { label: "Instagram", href: "https://www.instagram.com/jerehm/" },
   ],
