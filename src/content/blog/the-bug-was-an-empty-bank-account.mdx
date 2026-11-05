@@ -1,0 +1,82 @@
+---
+title: "The bug was an empty bank account"
+description: "Every Claude model in my app started answering with nothing. The code was fine. The account that pays for them had run dry, and the only screen that showed it was the one built never to hide an error."
+date: 2026-11-04T15:00:00Z
+topic: "Engineering"
+cover: ../../assets/blog/fuel-gauge-hero.jpg
+coverAlt: "A car dashboard fuel gauge reading empty, with 24 miles of range left and the low fuel light on."
+---
+
+import Pull from "../../components/Pull.astro";
+
+One August afternoon every Claude model in [MODUS](https://moduspilot.com/?utm_source=teximos&utm_medium=article&utm_campaign=empty-account), the chat
+app I build, started returning blank answers. Sonnet, Opus and the top model
+all at once. The requests succeeded. The server logged a 200. The answers had
+zero characters in them.
+
+I treated it like a code bug, because it looked exactly like one. It was not.
+The account that pays Anthropic for those models had run out of credit.
+
+## Why it looked like a bug
+
+MODUS serves models from five companies. A few open models run through a
+gateway that bills in one place. Every other model is called directly with my
+own key for that provider, billed to my own account with them. So when one
+provider's account runs dry, every model from that provider goes quiet at once
+while every other model keeps working.
+
+That pattern, one whole family down and the rest fine, is the tell. I did not
+know it yet. The same day the OpenAI account ran dry as well.
+
+<Pull>
+A whole family of models failing together is a billing problem until proven otherwise.
+</Pull>
+
+## The fallback that hid it
+
+The main chat has a fallback. If a model fails, another one answers. That is
+good for users and bad for diagnosis. When OpenAI ran out, ordinary chats kept
+getting answers from a fallback model, and nothing on screen said anything had
+gone wrong.
+
+The place it showed up was the compare view, where one question goes to several
+models side by side. Compare has no fallback, on purpose. It refuses to show one
+model's answer under another model's name. So when a provider fails, its column
+is simply empty.
+
+That is the right design and a confusing symptom. An empty column reads like
+"that model lost" rather than "that provider is not being paid".
+
+## How to tell the difference quickly
+
+Two things narrowed it down.
+
+**Timing.** A blank answer that comes back in half a second is the API refusing
+straight away: a key, a credit or a malformed request. A blank answer after seven
+seconds is a different problem, usually the model spending its whole budget
+thinking and never writing.
+
+**Asking the provider directly.** The chat route turns provider errors into a
+quiet empty stream. Calling the provider's API with the same key, outside the
+app, printed the real message straight away: no credits remaining.
+
+## The fix was a setting
+
+Neither account had automatic top-up turned on. I had assumed refilling was
+automatic. It is off by default and has to be switched on separately for each
+provider. It is now on for both, with a minimum balance.
+
+<Pull>
+Every test passed, because the code was correct. The money was not.
+</Pull>
+
+The broader lesson is about what your checks can see. Every automated check I
+had was green that afternoon, because every check tested code and the code was
+fine. None of them asked whether the account behind the code could pay. Before
+treating a whole provider going quiet as a regression, check the balance first.
+
+[MODUS](https://moduspilot.com/?utm_source=teximos&utm_medium=article&utm_campaign=empty-account) runs Claude, GPT, Gemini, Llama and DeepSeek in one
+app, and compare mode shows each one's answer side by side with nothing hidden.
+It is free to try.
+
+*Photograph: Deloreanman14, CC BY-SA 4.0.*

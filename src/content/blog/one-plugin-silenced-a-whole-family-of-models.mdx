@@ -1,0 +1,86 @@
+---
+title: "One plugin's missing word silenced a whole family of AI models"
+description: "A third-party tool left one field out of a list. OpenAI's API refused every request that carried it, and my chat app answered every question with nothing while its logs said everything was fine."
+date: 2026-11-04T16:00:00Z
+topic: "Engineering"
+cover: ../../assets/blog/blown-fuse-hero.jpg
+coverAlt: "A small glass cartridge fuse lying on a table, its thin wire visibly broken inside."
+---
+
+import Pull from "../../components/Pull.astro";
+
+The bug report was one blank chat bubble. Someone asked a question in
+[MODUS](https://moduspilot.com/?utm_source=teximos&utm_medium=article&utm_campaign=plugin-schema), the chat app I build, using a GPT model, and got
+nothing back. No error. No text. Just an empty reply.
+
+It turned out to be every reply. For that model, every message that was not
+small talk came back empty, including "reply with one short sentence". The whole
+GPT tier on the top plan was down, and the server logs showed a healthy 200 for
+each request.
+
+## Where the tools come from
+
+MODUS lets people connect outside tools through MCP, an open standard for
+plugging services into AI models. When you connect one, its tools ride along with
+every chat request so the model can choose to call them. Each tool comes with a
+schema: a description of the inputs it accepts.
+
+One connected service, a code search tool, published a schema with an optional
+field called page. It was listed as a property but left out of the list of
+required fields. Most AI providers accept that. OpenAI's strict function calling
+does not. It requires every property to appear in that list, and when one does
+not it rejects the entire request:
+
+> Invalid schema for function 'search_generic_code': 'required' is required to be
+> supplied and to be an array including every key in properties. Missing 'page'.
+
+<Pull>
+One missing word in someone else's plugin took down every answer from one provider.
+</Pull>
+
+## Three bugs stacked on top of each other
+
+Fixing the schema did not fix the bubble. There were three separate problems,
+each one enough to lose an answer.
+
+**The schema.** Foreign schemas are now rewritten on the way in for the
+strictest provider rather than whichever one happened to complain. Every
+property goes in the required list and genuinely optional ones are allowed to be
+empty instead.
+
+**The model.** The GPT models in question could not take function tools at all
+on the API endpoint the app used, not while reasoning was switched on. So for
+those models the tools and the part of the prompt that describes them are now
+dropped together. Leaving the description in would have the model promising to
+use tools it cannot reach.
+
+**The failure mode.** When a tool call itself failed, the error escaped the
+stream and ended the whole turn with zero characters. A failed tool is now handed
+back to the model as a result that says it failed, and the model answers anyway.
+
+## Why it hid for so long
+
+The worst part was not any of the three bugs. It was that the server could not
+see its own silence. An empty answer logged as a success, with normal timings.
+Nothing recorded that zero characters had reached the person waiting.
+
+<Pull>
+If your logs cannot tell an answer from silence, silence will look like success.
+</Pull>
+
+Two things changed. The server now logs at error level whenever a user gets
+nothing, along with the reason the stream finished. And there is a small script
+that reproduces any blank reply in about five seconds by reading the finish
+frames of the stream, which carry the reason even when nothing else does.
+
+## The general lesson
+
+Anything a third party sends you is untrusted input, and that includes the
+shape of their data. MCP does not require a server's schema to meet any
+provider's rules, so the only safe place to fix it is where it enters your
+system, for the strictest consumer you have.
+
+In [MODUS](https://moduspilot.com/?utm_source=teximos&utm_medium=article&utm_campaign=plugin-schema) you can connect tools like this to GPT, Claude and
+Gemini and switch between them in the same chat. It is free to try.
+
+*Photograph: TheresNothingOutThere, CC BY 4.0.*

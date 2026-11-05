@@ -1,0 +1,94 @@
+---
+title: "The AI memory that never remembered anything"
+description: "For as long as it existed, the memory feature in my chat app extracted nothing, looked up nothing and kept nothing. Three separate failures, each enough on its own, and not one error a user could see."
+date: 2026-11-04T17:00:00Z
+topic: "AI"
+cover: ../../assets/blog/card-catalog-hero.jpg
+coverAlt: "Rows of wooden library card catalogue drawers with brass handles and label holders."
+---
+
+import Pull from "../../components/Pull.astro";
+
+The pitch for memory in an AI assistant is simple. You mention something once
+and it is there next time. In [MODUS](https://moduspilot.com/?utm_source=teximos&utm_medium=article&utm_campaign=memory), the chat app I build, memory
+was one of the features I was proudest of. In July I found out it had never
+worked. Not once. No remembered fact had ever reached a single prompt.
+
+What made it hard to find was that nothing was broken in a way that showed.
+Every part of the feature failed politely, returned nothing and let the chat
+carry on as if all was well. There were three failures, stacked, and any one of
+them alone was enough to switch the whole feature off.
+
+## Failure one: nothing was ever saved
+
+After each message a background job reads the conversation and pulls out facts
+worth keeping. That job called a model through a gateway on its own, with no
+fallback. The main chat had a chain of fallbacks for months. The background job
+had none.
+
+On the free gateway tier it was rate limited on almost every message. The error
+was caught, the job returned nothing and the user got their answer as normal. In
+the production logs the extraction failed on about 19 of 25 requests in a row.
+
+<Pull>
+A background job may get worse. It must never go quiet.
+</Pull>
+
+## Failure two: nothing was ever looked up
+
+Fixing the write side exposed the read side. Before answering, the app looks up
+relevant memories. That lookup is two network calls in a row: turn the question
+into a vector, then search the index with it. I had given the pair 800
+milliseconds.
+
+I measured it on the live index: 688, 713, 736 and 986 milliseconds when warm
+and 4,136 when cold. Production agreed. The lookup timed out on 25 of 25
+consecutive requests. 800 milliseconds was not a budget. It was an off switch.
+
+It now gets four seconds, sized for a cold start, because a small product is
+cold almost all the time. It also runs alongside the other lookups the app makes
+before answering, so it rarely adds time. If it still runs out, the answer goes
+ahead without memory, which is exactly what used to happen anyway.
+
+## Failure three: everything found was thrown away
+
+Then the last one. Search results come with a similarity score and I only kept
+results scoring above 0.55. That number is a reasonable bar for one family of
+embedding models. My index used a different one.
+
+I measured the scores the real index produces. A question about raising money
+matched a stored fact about fundraising at 0.349. The best match for any probe
+across the whole index was 0.349 and the noise sat near zero. The filter kept 0
+of 7 stored facts.
+
+<Pull>
+The right memory came back first every time, and every time it was thrown away.
+</Pull>
+
+The facts had been extracted correctly, stored correctly, found correctly and
+ranked correctly. The last line of the pipeline discarded them. Since the
+ranking was trustworthy, the threshold only needed to cut the noise. It is now
+0.10 and keeps the top three.
+
+## What I took from it
+
+**A similarity threshold does not travel between embedding models.** Scores are
+specific to the model that produced them. Measure what your index actually
+produces before picking a number, or the number may quietly be higher than
+anything it will ever see.
+
+**A timeout is a decision, not a safety margin.** Measure the cold path, because
+at low traffic the cold path is the normal path.
+
+**A caught error is an invisible one.** Every one of these failures was handled.
+That was the problem. Each one was caught, logged once in a place nobody read
+and turned into a polite empty result. The fix was not just the three numbers.
+It was making a feature that stops working say so.
+
+After the fixes I asked MODUS what it knew about me. It answered with two facts
+I had mentioned in earlier chats, correctly, for the first time.
+
+Memory in [MODUS](https://moduspilot.com/?utm_source=teximos&utm_medium=article&utm_campaign=memory) now works across every model in the app, so a fact
+you mention to Claude is there when you ask GPT. It is free to try.
+
+*Photograph: MarkBuckawicki, CC0.*
