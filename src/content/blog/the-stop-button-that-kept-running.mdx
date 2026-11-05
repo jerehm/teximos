@@ -1,0 +1,99 @@
+---
+title: "The Stop button stopped the screen, not the server"
+description: "In an AI chat app with tools, pressing Stop ended the answer on screen while the server kept calling paid tools for up to four and a half minutes. Then it forgot to bill for it."
+date: 2026-11-04T12:00:00Z
+topic: "Engineering"
+cover: ../../assets/blog/stop-button-hero.jpg
+coverAlt: "A large red emergency stop button mounted on a wooden post above a sign reading press and hold."
+draft: true
+---
+
+import Pull from "../../components/Pull.astro";
+
+Every AI chat app has a Stop button. You press it, the text stops appearing and
+you assume that is the end of it. In the app I build, for a while, it was not.
+The text stopped. The work did not.
+
+## What Stop actually did
+
+A chat answer arrives as a stream. The browser opens a request, the server asks
+a model for an answer and passes the words through as they come. Pressing Stop
+closes the browser's end of that request.
+
+For a plain text answer that is nearly enough. The words stop, and the model
+call finishes on its own a few seconds later.
+
+Tools change that. My app lets people connect outside services, including AI
+video and image generators that charge per job. A request that uses tools is not
+one call. It is a loop: the model asks for a tool, the server runs it, the result
+goes back to the model and the model decides what to do next. I allow up to 10
+of those steps and up to 265 seconds of tool time in one turn.
+
+Closing the browser's end of the request did not tell any of that to stop. The
+server kept looping. It kept calling the video tool, spending the customer's
+credits with that service, for an answer that no screen would ever show.
+
+<Pull>
+The user saw it stop. Their account with the video service saw it keep going.
+</Pull>
+
+## The fix was one line
+
+The request object on the server carries a signal that fires when the browser
+disconnects. The AI library I use accepts that signal and will cancel the model
+call and every tool call in progress when it fires. I had simply not passed it
+in. Passing it in made Stop stop the server.
+
+That should have been the end of the story. It was the start of a second bug.
+
+## Stopping broke the bill
+
+My app records usage in a callback that runs when an answer finishes. In the
+version of the library I use, that callback does not run when an answer is
+cancelled. So once Stop really cancelled the work, a stopped answer was never
+counted at all. Every token the model had already read and written, across every
+step that had already run, was free.
+
+The fix is a second path that runs on cancel and bills what was already spent.
+That raised its own problem: in a race between finishing and cancelling, both
+paths could run. A small flag fixes that: the first path to run sets it and the
+second sees it and does nothing, so a turn is never billed twice.
+
+There is also a smaller trap inside the billing itself. Not every provider
+reports how many tokens it used. Some return nothing at all. So when the number
+is missing the app estimates it at about four characters per token over what was
+sent and received. And it counts the prompt once per step, because every step of
+a tool loop sends the whole conversation again. A 10 step loop costs roughly 10
+times a single reply, and it has to be counted that way.
+
+## Then the order mattered
+
+The finishing callback did two things: save any images or video the tools
+produced, then record usage. Saving media could take up to 30 seconds. The
+server function has a hard limit of 300 seconds. A turn that ran tools close to
+the 265 second mark and then spent 30 seconds saving files was killed by the
+platform before it reached the line that records usage.
+
+<Pull>
+The turns that cost the most were exactly the turns that went unbilled.
+</Pull>
+
+Now usage is recorded first and media saving only gets whatever time the
+request has left. A slow file save can still fail. It can no longer take the
+bill down with it.
+
+## What I took from it
+
+Three habits, all cheap.
+
+Cancellation has to reach the server. If a user action means stop, pass that
+signal to everything that spends money, not just to the screen.
+
+A finishing callback is not a guarantee. Anything that must happen, like
+recording what was spent, needs a path that also runs when the work is cut short.
+
+And do the thing that matters before the thing that is slow. Billing is a few
+milliseconds. File saving is not. Put them in the other order and the slow one
+decides whether the important one happens.
+
+*Photograph: Angus Fraser, CC BY 2.0. I build MODUS, a multi-model answer engine, at [moduspilot.com](https://moduspilot.com).*

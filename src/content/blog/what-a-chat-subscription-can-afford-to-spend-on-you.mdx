@@ -1,0 +1,112 @@
+---
+title: "What a $28 AI subscription can afford to spend on you"
+description: "A token is not a unit of cost. One from the most expensive model I serve costs 27 times one from the cheapest. Here is how a small chat product turns that into a limit and the three times I got the price wrong."
+date: 2026-11-04T13:00:00Z
+topic: "Economics"
+cover: ../../assets/blog/meters-hero.jpg
+coverAlt: "Three weathered electricity meters mounted side by side on a pale wall, each with its own small dial window."
+draft: true
+---
+
+import Pull from "../../components/Pull.astro";
+
+Every AI chat subscription has the same problem underneath it. The price is
+flat. The cost is not. A customer paying $28 a month can send a one line
+question to a cheap model or a long document to the most expensive model on the
+market, and the second can cost a hundred times the first.
+
+I run a small product that offers models from five companies on one
+subscription, so I have had to put an actual number on this. This is how the
+number works, what it comes to and the three times I got it wrong.
+
+## A token is not a unit of cost
+
+Model providers charge per million tokens, with one price for what you send and
+a higher one for what comes back. Here is what the models on my menu cost today,
+input then output, in dollars per million tokens:
+
+- Gemini 3.5 Flash Lite: $0.30 and $2.50
+- Llama 3.3 70B: $0.59 and $0.72
+- Gemini 3.8 Flash: $1.50 and $7.50
+- Claude Sonnet 5.5 and GPT-6.1 Sol: $2 and $10
+- Claude Opus 5.5 and Gemini 4: $4 and $20
+- Claude Fable 5.1 and GPT-6 Astra: $10 and $50
+
+Chat traffic is mostly input. Every turn resends a system prompt and the
+conversation so far, and the answer is short by comparison. So I blend the two
+prices at 90 percent input and 10 percent output. On that blend the cheapest
+model costs $0.52 per million tokens and the most expensive costs $14.
+
+<Pull>
+A Fable token is worth 27 Flash Lite tokens. Counting them the same is how you lose money.
+</Pull>
+
+So the limit is not counted in tokens. It is counted in units, where one unit is
+one Flash Lite token, and every other model is weighted by how much more it
+costs. Llama counts double. Sonnet counts six times. Opus counts 11 times. Fable
+and GPT-6 Astra count 27 times. Weights round up so no model is ever under
+counted.
+
+## What the plans come to
+
+Each plan gets a weekly allowance of units plus a smaller allowance per five
+hour window, so nobody burns the whole week in an afternoon.
+
+- The free tier allows 900,000 units a week. If someone uses every unit of every
+  week that costs about **$2 a month**.
+- The $28 plan allows 3.5 million units a week, which tops out at about
+  **$8 a month** in model costs.
+- The $59 plan, which adds the frontier models, allows 10.5 million, which tops
+  out at about **$24 a month**.
+
+Those are ceilings, not averages. Most people never reach them. But a ceiling is
+the number that has to be safe, because the one customer who does reach it is
+the one who decides whether the plan makes money.
+
+## The three times I got it wrong
+
+**First, I counted tokens.** The original limit added up raw tokens. A Llama
+token and a Fable token used the same budget even though one costs roughly 24
+times the other. On the $59 plan, a customer who spent the whole allowance on
+Fable would have cost about $640 a month. Nothing broke and nothing looked
+wrong. The limit was simply measuring the wrong thing.
+
+**Second, I copied the wrong row.** When I added the weights I priced Gemini
+Flash at Gemini Flash Lite's rates. They sit next to each other on Google's
+pricing page. Flash is about 4.3 times more expensive and it was also the
+default model and the unit everything else was measured against. So every limit
+in the product allowed 4.3 times more spending than I thought. The fix had a
+trap in it. If I had simply corrected Flash and kept it as the unit, every other
+weight would have shrunk by 4.3 and every paying customer would have quietly got
+4.3 times more frontier budget. Instead the unit moved to Flash Lite, whose
+blended price is exactly the $0.52 the old unit had claimed to be. Nobody's
+allowance moved.
+
+<Pull>
+A price is not a fact you look up once. It is a fact you check again.
+</Pull>
+
+**Third, I forgot a model existed.** Every image a user attaches is quietly sent
+to a small vision model that never appears on the menu. It had no row in the
+price table. Any unknown model is charged at the highest weight on purpose, on
+the theory that a missing row is more likely an expensive new model than a cheap
+one. That was the right default and the wrong result: the cheapest model in the
+system was billed like the most expensive one. A single question about a
+screenshot could use close to half a day's allowance.
+
+## The rules I keep now
+
+Unknown prices are set high, never low. Charging a customer's allowance too much
+for a cheap model makes a limit slightly strict. Charging too little for an
+expensive one loses money every day until someone notices.
+
+When a provider has announced a price rise, I bill the higher price now. Google
+charges $2 and $10 for Gemini 4 through the end of November and $4 and $20 after.
+Billing the lower price would be correct for five weeks and then silently wrong.
+
+And the weights are checked by a script that fails if any model on the menu has
+no price, because the only bug in this list that a customer would have noticed
+was the third one. The other two cost me, not them, and that kind of bug does
+not send you an email.
+
+*Photograph: Asurnipal, CC BY-SA 4.0. I build MODUS, a multi-model answer engine, at [moduspilot.com](https://moduspilot.com).*

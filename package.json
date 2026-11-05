@@ -12,7 +12,9 @@
     "postbuild": "pagefind --site dist",
     "preview": "astro preview",
     "astro": "astro",
-    "og": "node scripts/og.mjs"
+    "og": "node scripts/og.mjs",
+    "draft": "node scripts/draft-from-modus.mjs",
+    "publish": "node scripts/publish.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^7.0.5",

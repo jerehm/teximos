@@ -1,0 +1,128 @@
+---
+title: "I asked five AI models the same eight questions. They split on every one"
+description: "In July five models agreed on most of the questions I gave them. In November, with questions written to hide one thing, they disagreed on all eight. What changed was the questions."
+date: 2026-11-04T14:00:00Z
+topic: "AI"
+cover: ../../assets/blog/modus-compare.png
+coverAlt: "A chat screen showing one question answered side by side by three AI models, each in its own column with its response time."
+draft: true
+---
+
+import Pull from "../../components/Pull.astro";
+
+I build a chat product that sends one question to several AI models at once and
+shows the answers side by side. That makes it easy to run a small experiment I
+kept wondering about. If you put the same hard question to five of the best
+models available, do they actually disagree? Or are they five paraphrases of one
+answer?
+
+I ran it twice. The first time, in July, the answer was mostly paraphrases. The
+second time, this week, every single question split the room. The models were
+partly different between the two runs but that is not the main reason. The
+questions were.
+
+## How the test works
+
+Each question comes with exactly two options and an instruction to pick one and
+give a reason in two sentences. "It depends" is not allowed. Five models answer
+in parallel, each from a different company, and a script tallies the picks.
+
+In July the five were Claude Opus, GPT-5.6 Sol, Gemini 3.1 Pro, Llama 4 Maverick
+and DeepSeek V3.1. This week they were Claude Opus 5.5, GPT-6 Astra, Gemini 4,
+Llama 4 Maverick and DeepSeek V3.1. Each question was asked once per model.
+
+## July: mostly a chorus
+
+Eight questions, three splits. Five came back unanimous.
+
+All five models said a solo founder should launch on Postgres rather than SQLite.
+All five said to refactor a four-year-old system rather than rewrite it. All five
+picked a monorepo for a five-engineer team, a free allowance over an upfront card
+for an unknown product and shipping on time over slipping two weeks for one janky
+feature.
+
+None of those are bad answers. They are the answers you would find in the first
+three blog posts on each topic. That is the point. The models have all read the
+same blog posts.
+
+<Pull>
+A question with a textbook answer gets the textbook answer five times.
+</Pull>
+
+The three that split had something in common. Whether to turn on strict
+TypeScript at once or file by file went 3 to 2. Raising a seed round against
+bootstrapping went 4 to 1. Whether a consultant must disclose that a model wrote
+the first draft went 4 to 1. None of them is really about facts. Each turns on
+how much risk you will tolerate or what you think you owe someone.
+
+## November: questions that hide one thing
+
+So for the second run I used questions written around that idea. Each one leaves
+out the piece of information that would settle it: your appetite for risk, how
+you weigh loyalty against money, what you value in a team.
+
+Eight questions, eight splits. Five went 3 to 2 and three went 4 to 1.
+
+- **Raising a launch price that was too low.** Grandfather early customers forever
+  or move them after 12 months? Claude, GPT and Gemini said move them. Llama and
+  DeepSeek said honour the old price forever.
+- **Mastering one model against routing each task to the best one.** The three
+  models from the big labs said master one. The two open models said route.
+- **A well-liked engineer who ships slower than everyone after nine months.** Claude,
+  Gemini and Llama said let them go. GPT and DeepSeek said coach for another
+  quarter.
+- **An agency at $30k a month where the owner is the bottleneck.** Claude and
+  DeepSeek said hire full time. The other three said use contractors.
+- **Annual billing at 12 months for the price of 10.** Three said not generous
+  enough. Two said too generous.
+
+The other three were closer. Four models to one said default to Server Components,
+keep an AI code reviewer advisory and build retrieval over a 500 page handbook
+instead of stuffing it into the context window.
+
+## The disagreements are worth reading
+
+A split tally is a headline. The reasons are the useful part.
+
+On the hiring question, Claude argued that if the owner is the bottleneck,
+contractors still need the owner to brief them, manage them and check their work,
+so the bottleneck stays where it is. GPT picked contractors but answered that
+point directly: give one contractor ownership of the whole delivery function
+rather than a list of tasks, or you remain the bottleneck. Gemini added the money
+case: at $30k a month one lost client can make a salary unaffordable.
+
+On the handbook question, Gemini was the lone vote for the long context window.
+It put the handbook at about 250,000 tokens, said that fits in a modern window
+and said prompt caching removes most of the cost. Claude put the same handbook at
+250,000 to 400,000 tokens and said sending it with every question is slow and
+expensive. Roughly the same estimate of the size, opposite conclusions.
+
+<Pull>
+The most useful thing in the whole run was a reason one model gave and the others missed.
+</Pull>
+
+And on annual billing, DeepSeek called the discount 20 percent. Ten months for
+twelve is 16.7 percent. Every other model got that right. One wrong number in
+five is exactly the kind of thing you only catch when you can see the other four.
+
+## What I take from it
+
+Three things, with the caveats first. This is one run per model, and these
+models do not give the same answer twice. The July and November questions were
+different and so were some of the models. Treat it as a field note rather than a
+benchmark.
+
+First, asking several models is not useful for every question. If the answer is
+in the textbook they will all recite the textbook, and the second opinion costs
+time and tells you nothing.
+
+Second, it is very useful for the questions people actually lose sleep over.
+Those are the ones without a textbook answer, and they are the ones where a
+single model will sound confident on one side of a line that reasonable people
+draw in different places.
+
+Third, the most valuable output was never the vote. It was the one argument
+nobody else made. A single model cannot show you what it left out. Four other
+models can.
+
+*Screenshot: MODUS, by the author. I build MODUS, a multi-model answer engine, at [moduspilot.com](https://moduspilot.com).*

@@ -3,7 +3,9 @@ import { getCollection, render } from "astro:content";
 import Post from "../../layouts/Post.astro";
 
 export async function getStaticPaths() {
-  const posts = (await getCollection("blog", ({ data }) => !data.draft)).sort(
+  // Drafts get a page under `astro dev` only, so a piece can be read in full
+  // before it is published. The build, the index and RSS never see them.
+  const posts = (await getCollection("blog", ({ data }) => import.meta.env.DEV || !data.draft)).sort(
     (a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
   );
   // Sorted newest-first, so the previous index is the newer piece and the next
