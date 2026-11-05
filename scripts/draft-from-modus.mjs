@@ -102,7 +102,7 @@ import Pull from "../../components/Pull.astro";
 
 TODO write against drafts/${slug}.facts.md
 
-*I build MODUS, a multi-model answer engine, at [moduspilot.com](https://moduspilot.com).*
+*Photograph: TODO credit.*
 `,
 );
 console.log(`draft  src/content/blog/${slug}.mdx (draft: true)`);
