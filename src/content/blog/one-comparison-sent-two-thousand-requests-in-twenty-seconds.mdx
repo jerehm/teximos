@@ -1,0 +1,87 @@
+---
+title: "One comparison sent two thousand requests in twenty seconds"
+description: "A feature that asks three AI models the same question and then picks a winner had a quiet loop in it. When the judge had nothing to say, the page asked again, about a hundred times a second."
+date: 2026-11-13T13:00:00Z
+topic: "Engineering"
+cover: ../../assets/blog/switchboard-hero.jpg
+coverAlt: "Rows of telephone operators in headsets plugging cords into a long Bell System switchboard for overseas calls."
+draft: true
+---
+
+import Pull from "../../components/Pull.astro";
+
+[MODUS](https://moduspilot.com/?utm_source=teximos&utm_medium=article&utm_campaign=two-thousand-requests),
+the AI chat app I build, has a compare mode. You ask one question and three
+models answer it side by side. When they are all done, one more call reads the
+three answers and writes a short verdict on which one did best.
+
+For a while, that last call was being made about a hundred times a second.
+
+## How I found it
+
+Not from a user. Nobody could see it. The answers looked fine and the verdict
+either appeared or quietly did not. What I could see was the server: the
+verdict endpoint kept timing out at its 20 second limit in production, far more
+often than compare was being used.
+
+So I ran one comparison against the old code with a counter on the verdict
+call. In 20 seconds it fired 2,001 times.
+
+<Pull>
+One question. Three answers. Two thousand and one requests for a verdict.
+</Pull>
+
+## The loop
+
+The page is written in React, and the verdict request lived in an effect. An
+effect is code that runs after the screen updates and runs again whenever the
+values it watches change. Mine was guarded like this, in plain words: if every
+model has finished and there is no verdict yet and a verdict is not already
+loading and at least two models answered, then ask for one.
+
+That reads as a complete guard. Walk through what happens when the verdict
+comes back empty, which it does when the judging model errors, is rate limited
+or is not available to that account.
+
+The request starts, so loading flips to true. The response arrives with no
+verdict. Loading flips back to false. That change wakes the effect up. All the
+models are still finished. There is still no verdict. Loading is false again.
+Every condition holds, so it asks again.
+
+<Pull>
+Loading told the effect a request was not in flight. It never said one had already failed.
+</Pull>
+
+As long as the verdict came back empty the loop never ended. It ran as fast as
+the network allowed, for as long as the tab stayed open.
+
+## The fix
+
+The guard needed a fact it did not have: whether this card had already tried.
+That is a different question from whether it is trying right now, and it
+needed its own flag. The flag is set once, before the first request, and it is
+deliberately not part of what the screen redraws on, so setting it cannot wake
+the effect up again. One attempt per comparison. If the verdict is empty the
+card simply shows the three answers, which were always the point.
+
+The server side got tightened at the same time. The verdict call now gives up
+after 25 seconds instead of hanging until the platform kills it, and the
+function is allowed 60 seconds so a slow judge fails cleanly instead of
+timing out.
+
+## What I took from it
+
+A loading flag answers the question of whether something is happening now. It
+is easy to use it as the answer to whether something has happened at all, and
+the two only agree while every request succeeds. The first empty response is
+where they part.
+
+The test that caught it was not clever either. Count the calls. A feature that
+should make one request and makes two thousand is invisible from the screen and
+obvious from a counter.
+
+Compare in [MODUS](https://moduspilot.com/?utm_source=teximos&utm_medium=article&utm_campaign=two-thousand-requests)
+now asks for one verdict per question and puts the answers from three models
+next to each other so you can judge for yourself. It is free to try.
+
+*Photograph: U.S. National Archives, no known copyright restrictions.*

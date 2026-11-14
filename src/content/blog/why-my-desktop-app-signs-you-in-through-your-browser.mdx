@@ -1,0 +1,96 @@
+---
+title: "Why my desktop app signs you in through your browser"
+description: "Your passkeys live in iCloud Keychain or Chrome, and a desktop app built on Electron cannot reach either. So the app hands sign in to the browser that can. Making that safe took more than the handoff."
+date: 2026-11-13T14:00:00Z
+topic: "Security"
+cover: ../../assets/blog/keyring-hero.jpg
+coverAlt: "A bunch of worn brass and steel keys on a ring with a blue tag and a carabiner, lying on dark cloth."
+draft: true
+---
+
+import Pull from "../../components/Pull.astro";
+
+If you have signed in to a Mac app lately and it opened your browser to do it,
+this is why. I just moved the desktop app for
+[MODUS](https://moduspilot.com/?utm_source=teximos&utm_medium=article&utm_campaign=browser-sign-in),
+the AI chat app I build, to that pattern, and the reasons are worth spelling
+out.
+
+## Your passkeys are not where the app is
+
+MODUS signs people in with Google or Apple. Most people now confirm that with a
+passkey and a touch of the fingerprint reader. In Safari or Chrome that just
+works.
+
+Inside the desktop app it did not. The app is built on Electron, which is a
+browser engine in a box, but it is not your browser. Your passkeys live in
+iCloud Keychain or in Chrome's password manager, and an app cannot read either.
+Electron can make its own Touch ID passkeys, tied to that one Mac, but your
+existing ones never show up. Google would look for a passkey, find none, and
+offer to use your phone over Bluetooth instead.
+
+There was a second problem. Turning on even that limited Touch ID support needs
+a restricted permission from Apple, and getting that wrong once already cost me
+four releases that would not open.
+
+<Pull>
+The browser already has your passkeys and your saved logins. The app has neither.
+</Pull>
+
+So the app stopped trying. It now opens your real browser, where you sign in
+the way you always do, and the browser hands the result back.
+
+## The handoff
+
+When you click sign in, the app makes a long random value called the state and
+opens a page on the website with that state in the address. You sign in there.
+The page asks the server for a one time code, which lives for two minutes and
+works once. The server keeps only a hash of it, never the code itself.
+
+The browser then passes the code back to the app through a link that only the
+app answers. The app checks that the state on that link is the one it started,
+swaps the code for a session and you are in.
+
+Links like that are not reliable. Browsers block them, ask about them or the
+user closes the tab first. So the app also asks the server every two seconds
+whether a code has arrived for its state. Whichever path delivers first wins and
+the app finishes once. After ten minutes it gives up.
+
+## The hole in the backup path
+
+An audit before the release shipped found the problem with that backup path.
+The state was the only thing tying the code to the app, and the state travels in
+a web address.
+
+Picture someone who starts a sign in on their own machine, copies the address
+with their state in it and sends it to you. You are already signed in to MODUS
+in your browser, so one click on Continue issues a code. Their app is the one
+asking the server for codes on that state. It gets yours.
+
+<Pull>
+The code went to whoever asked for it, not to whoever started on your computer.
+</Pull>
+
+The fix ties the backup path to the network. The server records where the
+approving browser connected from and only hands the code to an app asking from
+the same address. Your browser and your desktop app are on the same connection.
+Someone across the internet is not. The direct link path never had the problem,
+because it can only reach an app on the same computer.
+
+The same change stopped other sites from loading the sign in page inside a
+hidden frame, so nobody can trick you into clicking Continue on a page you
+cannot see.
+
+## The tradeoff I kept
+
+Tying the code to the network has a cost. Safari's iCloud Private Relay sends
+your browsing through a different address than your apps use. For those users
+the backup path never delivers, and only the direct link works. I took that
+trade. A sign in that sometimes needs one more click is better than one that can
+be handed to a stranger.
+
+The [MODUS](https://moduspilot.com/download/mac?utm_source=teximos&utm_medium=article&utm_campaign=browser-sign-in)
+desktop app now signs you in with the passkey you already have and keeps your
+chats with GPT, Claude and Gemini in one place on your Mac. It is free to try.
+
+*Photograph: Pittigrilli, CC BY-SA 4.0.*

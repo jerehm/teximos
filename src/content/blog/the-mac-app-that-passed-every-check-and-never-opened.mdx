@@ -1,0 +1,97 @@
+---
+title: "The Mac app that passed every check and never opened"
+description: "Four releases of my desktop app were signed, notarized and approved by Gatekeeper. Every one of them was killed by macOS the instant it started. None of the checks ever ran the app."
+date: 2026-11-13T12:00:00Z
+topic: "Engineering"
+cover: ../../assets/blog/closed-sign-hero.jpg
+coverAlt: "A blue sign reading Closed hanging from a suction cup on the glass of a shop door."
+draft: true
+---
+
+import Pull from "../../components/Pull.astro";
+
+Shipping a Mac app outside the App Store comes with a ritual. You sign it with
+your Developer ID. You send it to Apple to be notarized. You check that
+Gatekeeper, the part of macOS that decides whether a downloaded app may run,
+says yes. When all three pass you publish.
+
+I did all three for four releases in a row of the desktop app for
+[MODUS](https://moduspilot.com/?utm_source=teximos&utm_medium=article&utm_campaign=never-opened),
+the AI chat app I build. All three passed every time. And every one of those
+releases died the moment anyone opened it, on every Mac, for new installs and
+updates alike.
+
+## What the user saw
+
+A user told me. They double clicked the app and got one line: the application
+can't be opened. No crash report worth reading, no window, nothing in the dock.
+
+Running it from a terminal gave a little more. The process exited with code
+137, which means it was killed by a signal, and the signal came from the
+kernel before a single line of my code ran.
+
+## What I had changed
+
+Two months earlier I had added Touch ID sign in. On a Mac, an Electron app can
+use the fingerprint reader for passkeys, but only if the app carries an
+entitlement called `keychain-access-groups`. Entitlements are permissions baked
+into the app's signature. I added the entitlement and signed the app. On my
+machine it built cleanly.
+
+What I did not know is that some entitlements are restricted. On an app
+distributed outside the App Store, a restricted entitlement only counts if the
+app also carries a provisioning profile from Apple that grants it. Without the
+profile macOS does not ignore the entitlement or show a warning. It kills the
+process at launch.
+
+<Pull>
+Signing checks the signature. Notarization scans for malware. Gatekeeper checks both. Not one of them starts the app.
+</Pull>
+
+That is the whole bug. The signature was valid, so codesign was happy. Nothing
+in the app was malicious, so notarization was happy. Gatekeeper trusts those two
+results, so it was happy. The question nobody asked was whether the app could
+actually start.
+
+## Why it could not fix itself
+
+The worst part was not the crash. It was that the app has an auto updater, and
+the updater lives inside the app. An app that never starts never checks for
+updates. Shipping a fixed version did nothing for anyone who already had a
+broken one. Every affected person had to go back to the website and download
+the app again by hand.
+
+## The fix and the guard
+
+The fix was to take the entitlement out, which also turned Touch ID off on the
+desktop app. Getting it back properly needs that provisioning profile, which is
+a trip through Apple's developer portal and not a code change.
+
+The guard mattered more. My build now runs a check right after the app is
+signed, and it refuses to publish if either of two things is true. The first is
+any restricted entitlement without an embedded provisioning profile. The second
+needs no knowledge of Apple's rules at all: it starts the signed app with a
+throwaway profile, waits four seconds and fails the build if the process was
+killed.
+
+I ran that check against the last broken release. It failed on both counts.
+
+<Pull>
+The cheapest test of a release is the one the user runs first: does it open.
+</Pull>
+
+## What I took from it
+
+Every check in a release pipeline answers a narrower question than it seems to.
+A signature check proves the bytes are yours. A malware scan proves they are not
+hostile. Neither proves they work, and it is easy to let a row of green ticks
+stand in for that.
+
+So now the last step before anything ships is to do what a person does. Open
+it. If it is still running a few seconds later, it can go out.
+
+The current [MODUS](https://moduspilot.com/download/mac?utm_source=teximos&utm_medium=article&utm_campaign=never-opened)
+desktop app opens, updates itself and puts GPT, Claude and Gemini in one window on
+your Mac. It is free to try.
+
+*Photograph: Ivan Radic, CC BY 2.0.*
